@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Switches the live release. Installed as /usr/local/bin/app-activate, owned by root, and the
+# only command the deploy user may run with sudo (deploy/sudoers-app-deploy).
+#
+#   app-activate <release>     migrate, switch /opt/app/current, restart, check health
+#   app-activate --rollback    switch back to the release that was live before (no migration is undone)
+#
+# Every release that goes live is appended to /opt/app/history, so a rollback returns to the
+# release that actually ran before, never to a newer one that failed to activate.
+set -euo pipefail
+
+root=/opt/app
+releases=$root/releases
+history=$root/history
+keep=5
+
+health() {
+  for _ in $(seq 1 30); do
+    if curl -fsS http://127.0.0.1:8080/api/health >/dev/null; then return 0; fi
+    sleep 1
+  done
+  return 1
+}
+
+restart() {
+  systemctl restart app-api
+  systemctl restart app-web
+}
+
+switch_to() {
+  ln -sfn "$1" "$root/current.new" && mv -Tf "$root/current.new" "$root/current"
+}
+
+# The live release's name, or nothing before the first deploy.
+live() {
+  [[ -L "$root/current" ]] && basename "$(readlink -f "$root/current")" || true
+}
+
+if [[ "${1:-}" == "--rollback" ]]; then
+  current=$(live)
+  # The newest recorded release before the live one that is still on disk.
+  previous=$(grep -vx -- "$current" "$history" 2>/dev/null | tac |
+    while IFS= read -r name; do [[ -x "$releases/$name/bin/app-api" ]] && { echo "$name"; break; }; done || true)
+  [[ -n "$previous" ]] || { echo "no earlier release recorded in $history" >&2; exit 1; }
+  switch_to "$releases/$previous"
+  # The rolled-back release leaves the history, so a second rollback goes further back.
+  tmp=$(mktemp "$root/history.XXXXXX")
+  awk -v gone="$current" '$0 != gone' "$history" >"$tmp" && mv -f "$tmp" "$history"
+  restart
+  health || { echo "health check failed after rollback" >&2; exit 1; }
+  echo "rolled back to $previous"
+  exit 0
+fi
+
+release=${1:?usage: app-activate <release> | --rollback}
+[[ "$release" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "bad release name" >&2; exit 1; }
+dir=$releases/$release
+[[ -x "$dir/bin/app-api" ]] || { echo "$dir/bin/app-api not found" >&2; exit 1; }
+
+chown -R root:app "$dir"
+chmod -R g+rX,o-rwx "$dir"
+install -d -o app -g app "$dir/web/.next/cache"
+
+# Migrations run as the service user with the service's environment, before the switch, so a
+# failed migration leaves the old release running.
+sudo -u app --preserve-env=PATH bash -c "set -a; . /etc/app/api.env; set +a; '$dir/bin/app-api' migrate"
+
+# A server set up before the history existed records its live release first.
+current=$(live)
+if [[ -n "$current" && ! -s "$history" ]]; then echo "$current" >"$history"; fi
+
+switch_to "$dir"
+echo "$release" >>"$history"
+restart
+if ! health; then
+  echo "health check failed: run 'sudo app-activate --rollback'" >&2
+  exit 1
+fi
+
+# Old releases go, except the ones a rollback may still need.
+keepers=$(tail -n "$keep" "$history")
+ls -1dt "$releases"/*/ | sed 's:/$::' | tail -n +$((keep + 1)) | while IFS= read -r old; do
+  grep -qx -- "$(basename "$old")" <<<"$keepers" || rm -rf -- "$old"
+done
+tail -n 50 "$history" >"$history.new" && mv -f "$history.new" "$history"
+echo "live: $release"

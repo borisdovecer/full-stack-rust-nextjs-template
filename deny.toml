@@ -1,0 +1,9 @@
+# cargo-deny: `cargo deny check advisories` (CI: .github/workflows/security.yml).
+# Every ignored advisory names why and what would end the ignore.
+
+[advisories]
+ignore = [
+    # chrono is unmaintained, with no security issue. sqlx, the API's types and every timestamp
+    # use it; moving to another time crate is its own change.
+    { id = "RUSTSEC-2026-0543", reason = "unmaintained, no vulnerability; replacing chrono is a separate change" },
+]

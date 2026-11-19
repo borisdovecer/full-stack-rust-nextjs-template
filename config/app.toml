@@ -1,0 +1,50 @@
+# Non-secret settings for the API. Secrets go in .env.
+# Unknown keys are refused at start, so a typo cannot be silently ignored.
+
+[app]
+name = "App"
+
+[session]
+cookie_name = "app_session"
+lifetime_hours = 168           # 7 days
+extend_after_hours = 24        # a used session gets a fresh lifetime once this much has passed
+reauth_minutes = 10            # changing the sign-in method needs a sign-in this recent
+
+[login_throttle]
+max_failures = 5               # failed logins for one email inside the window
+max_failures_per_ip = 20       # failed logins from one IP, across emails (shared offices, NAT)
+window_minutes = 15
+
+[registration]
+mode = "open"                  # open | approval | closed
+
+[mail]
+from = "App <no-reply@example.com>"  # the domain must be verified at Resend; the key is RESEND_API_KEY in .env
+
+[login_code]
+lifetime_minutes = 10          # a mailed sign-in code works this long, once
+max_attempts = 3               # wrong codes before the email is paused
+pause_minutes = 15
+resend_seconds = 60            # at most one mail per address this often
+max_requests_per_ip = 10       # codes one IP may ask for per lifetime_minutes, across addresses
+
+[wallet]
+domain = "127.0.0.1:3000"      # the host people open the app on (exactly as the address bar shows it); a signed sign-in message must name it
+statement = "Sign in to App. This is a signature, not a transaction, and costs nothing."
+nonce_minutes = 5              # how long a sign-in challenge may wait to be signed
+max_nonces_per_ip = 30         # challenges one IP may ask for per nonce_minutes
+
+[oauth]
+public_url = "http://127.0.0.1:3000"  # where people open the app (exactly as the address bar shows it); providers send them back to {public_url}/api/auth/oauth/{provider}/callback
+
+[oauth.google]
+client_id = ""                 # on when this and GOOGLE_CLIENT_SECRET (.env) are set
+
+[oauth.github]
+client_id = ""                 # on when this and GITHUB_CLIENT_SECRET (.env) are set
+
+[password]
+max_concurrent_hashes = 0      # Argon2 hashes at once (about 19 MiB each); more wait. 0 = twice the CPU cores
+
+[help]
+source = "auto"                # auto (disk in development, embedded in production) | disk | embedded

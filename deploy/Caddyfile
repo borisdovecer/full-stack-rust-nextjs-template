@@ -1,0 +1,40 @@
+# One public host name for the whole project. Caddy gets and renews the TLS certificate.
+# Set APP_DOMAIN in /etc/caddy/caddy.env (see deploy/README.md), or write the name here.
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		# Same-origin only, except browser Sentry. Scripts need 'unsafe-inline': Next writes its
+		# page data and the theme script inline, and nonces would need a server step the web
+		# does not have. A new outside host (fonts, analytics, an RPC) is added here first.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.sentry.io; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		-Server
+	}
+
+	# The API. Caddy appends the client address to X-Forwarded-For, which the API reads
+	# because the request arrives from loopback.
+	handle /api/* {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy 127.0.0.1:8080
+	}
+
+	# Everything else is the web.
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	log {
+		output file /var/log/caddy/app.log {
+			roll_size 50MiB
+			roll_keep 5
+		}
+	}
+}

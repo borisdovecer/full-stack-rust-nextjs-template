@@ -1,0 +1,79 @@
+name: Deploy
+
+# Manual only: Actions tab → Deploy → Run workflow. Builds on GitHub, copies the release to the
+# server over ssh, then the server's app-activate migrates, switches and checks health.
+#
+# Repository secrets (Settings → Secrets and variables → Actions):
+#   DEPLOY_HOST         server name or address
+#   DEPLOY_USER         the deploy user (deploy/README.md creates `deploy`)
+#   DEPLOY_SSH_KEY      that user's private key
+#   DEPLOY_KNOWN_HOSTS  the server's line from `ssh-keyscan <host>`
+# Optional variable:
+#   NEXT_PUBLIC_SENTRY_DSN  browser Sentry DSN; baked into the web build
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build the API
+        env:
+          GIT_COMMIT: ${{ github.sha }}
+        run: cargo build --release --locked -p app-api
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build the web
+        working-directory: web
+        env:
+          NEXT_OUTPUT: standalone
+          NEXT_PUBLIC_SENTRY_DSN: ${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Assemble the release
+        id: release
+        run: |
+          name="$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::12}"
+          out="release/$name"
+          mkdir -p "$out/bin" "$out/web"
+          cp target/release/app-api "$out/bin/"
+          cp -r web/.next/standalone/. "$out/web/"
+          mkdir -p "$out/web/.next"
+          cp -r web/.next/static "$out/web/.next/static"
+          if [ -d web/public ]; then cp -r web/public "$out/web/public"; fi
+          tar -C release -czf "release/$name.tar.gz" "$name"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Copy to the server and activate
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          NAME: ${{ steps.release.outputs.name }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh_opts="-i ~/.ssh/deploy -o StrictHostKeyChecking=yes"
+          scp $ssh_opts "release/$NAME.tar.gz" "$USER@$HOST:/opt/app/incoming/"
+          ssh $ssh_opts "$USER@$HOST" "set -e
+            tar -C /opt/app/releases -xzf /opt/app/incoming/$NAME.tar.gz
+            rm /opt/app/incoming/$NAME.tar.gz
+            sudo /usr/local/bin/app-activate $NAME"

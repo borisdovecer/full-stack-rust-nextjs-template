@@ -1,0 +1,17 @@
+DROP TABLE oauth_signups;
+DROP TABLE user_identities;
+DROP TABLE wallet_nonces;
+DROP TABLE login_codes;
+DROP TABLE audit_events;
+DROP TABLE auth_login_attempts;
+DROP TABLE user_sessions;
+DROP TABLE user_permissions;
+DROP TABLE user_preferences;
+DROP TABLE users;
+DROP FUNCTION set_updated_at();
+DROP TYPE login_code_purpose;
+DROP TYPE login_type;
+DROP TYPE theme;
+DROP TYPE user_status;
+DROP TYPE user_role;
+DROP EXTENSION IF EXISTS pg_trgm;

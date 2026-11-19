@@ -1,0 +1,2 @@
+# /etc/sudoers.d/app-deploy (mode 440). The deploy user may only activate a release.
+deploy ALL=(root) NOPASSWD: /usr/local/bin/app-activate

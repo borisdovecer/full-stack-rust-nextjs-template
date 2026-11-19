@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Dumps the database to /var/backups/app and keeps the newest 14 dumps.
+# Run by app-backup.service with DATABASE_URL from /etc/app/api.env.
+set -euo pipefail
+
+dir=/var/backups/app
+keep=14
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+file="$dir/app-$stamp.dump"
+
+umask 077
+pg_dump --format=custom --no-owner --file="$file.partial" "$DATABASE_URL"
+mv "$file.partial" "$file"
+
+ls -1t "$dir"/app-*.dump | tail -n +$((keep + 1)) | xargs -r rm --
+echo "backup written: $file"

@@ -1,0 +1,30 @@
+[Unit]
+Description=App API
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=app
+Group=app
+WorkingDirectory=/opt/app/current
+EnvironmentFile=/etc/app/api.env
+ExecStart=/opt/app/current/bin/app-api serve
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=30
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadOnlyPaths=/opt/app /etc/app
+
+[Install]
+WantedBy=multi-user.target

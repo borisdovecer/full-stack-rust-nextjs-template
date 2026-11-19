@@ -1,0 +1,28 @@
+[Unit]
+Description=App web (Next.js)
+After=network-online.target app-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=app
+Group=app
+WorkingDirectory=/opt/app/current/web
+EnvironmentFile=/etc/app/web.env
+Environment=NODE_ENV=production
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=3
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+RestrictSUIDSGID=true
+ReadOnlyPaths=/opt/app /etc/app
+ReadWritePaths=/opt/app/current/web/.next/cache
+
+[Install]
+WantedBy=multi-user.target

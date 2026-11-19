@@ -1,0 +1,48 @@
+[package]
+name = "app-api"
+description = "The HTTP API: routes, middleware, OpenAPI, help docs and admin CLI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+app-core.workspace = true
+app-db.workspace = true
+app-auth.workspace = true
+app-mail.workspace = true
+reqwest.workspace = true
+tokio.workspace = true
+axum.workspace = true
+axum-extra.workspace = true
+cookie.workspace = true
+include_dir.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+utoipa.workspace = true
+utoipa-axum.workspace = true
+clap.workspace = true
+dotenvy.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+sentry.workspace = true
+uuid.workspace = true
+base64.workspace = true
+subtle.workspace = true
+chrono.workspace = true
+sqlx.workspace = true
+rpassword.workspace = true
+
+[dev-dependencies]
+http-body-util.workspace = true
+app-mail.workspace = true
+ed25519-dalek.workspace = true
+bs58.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,36 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Secrets: only the examples are committed
+.env
+.env.*
+!.env.example
+web/.env.local
+web/.env.*.local
+deploy/*.env
+!deploy/*.env.example
+
+# Node / Next.js
+node_modules/
+web/.next/
+web/out/
+web/coverage/
+web/next-env.d.ts
+*.tsbuildinfo
+
+# Logs, backups, local scans
+logs/
+*.log
+backups/
+audit/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+
+# Claude Code: per-machine settings and agent worktrees
+.claude/settings.local.json
+.claude/worktrees/
+

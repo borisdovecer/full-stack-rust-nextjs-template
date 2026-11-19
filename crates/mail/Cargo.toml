@@ -1,0 +1,21 @@
+[package]
+name = "app-mail"
+description = "Sends email: through Resend, or to the log in development."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+reqwest.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+axum.workspace = true
+
+[lints]
+workspace = true
